@@ -1,4 +1,4 @@
-// Conversion factor: pixels per cm
+// Conversion factor: pixels per cm (and conveniently 1 cm = 10 mm)
 const scaleFactor = 10;
 let zoomLevel = 1;
 const boardContainer = document.getElementById('board-container');
@@ -122,8 +122,10 @@ document.getElementById('calculateBtn').addEventListener('click', () => {
   const itemGapCm = parseFloat(document.getElementById('itemGap').value);
   // Item shape selection
   const itemShape = document.getElementById('itemShape').value;
+  // Speed (mm/s)
+  const speed = parseFloat(document.getElementById('speed').value) || 25;
 
-  // Convert to pixels
+  // Convert to pixels (and also mm, since 1cm*10 = 10mm)
   const boardWidthPx = boardWidthCm * scaleFactor;
   const boardHeightPx = boardHeightCm * scaleFactor;
   const paddingTopPx = boardPaddingTopCm * scaleFactor;
@@ -184,7 +186,48 @@ document.getElementById('calculateBtn').addEventListener('click', () => {
     }
     currentY += itemHeightPx + itemGapPx;
   }
-  resultDiv.textContent = 'Total items fitted: ' + itemsCount;
+
+  // Calculate route distance for the laser head using a greedy-nearest neighbor algorithm
+  const itemElements = Array.from(document.querySelectorAll('.item'));
+  let routeDistance = 0;
+  if (itemElements.length > 0) {
+    // Get center coordinates of each item (positions are in mm)
+    let points = itemElements.map(item => {
+      let left = parseFloat(item.style.left);
+      let top = parseFloat(item.style.top);
+      // Calculate center coordinates of the item
+      return {
+        x: left + item.offsetWidth / 2,
+        y: top + item.offsetHeight / 2
+      };
+    });
+    
+    // Start from the first item and greedily visit the nearest neighbor
+    let current = points.shift();
+    while (points.length > 0) {
+      let nearestIndex = 0;
+      let nearestDistance = Infinity;
+      for (let i = 0; i < points.length; i++) {
+        const dx = points[i].x - current.x;
+        const dy = points[i].y - current.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = i;
+        }
+      }
+      routeDistance += nearestDistance;
+      current = points.splice(nearestIndex, 1)[0];
+    }
+  }
+  
+  // Compute travel time (in seconds) based on the speed (mm/s)
+  const travelTime = routeDistance / speed;
+  
+  // Display total items, travel distance, and estimated travel time
+  resultDiv.innerHTML = 'Total items fitted: ' + itemsCount +
+                        '<br>Total travel distance: ' + routeDistance.toFixed(2) + ' mm' +
+                        '<br>Estimated time: ' + travelTime.toFixed(2) + ' s (at ' + speed + ' mm/s)';
 
   // Initialize draggable behavior using Interact.js (supports group dragging)
   interact('.item').draggable({

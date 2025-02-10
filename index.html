@@ -84,7 +84,7 @@
       overflow: hidden;
       transition: transform 0.2s ease;
       border-radius: 8px;
-      touch-action: none; /* Prevents mobile scrolling on board */
+      touch-action: none; /* Prevent mobile scrolling on board */
     }
     .item {
       position: absolute;
@@ -94,7 +94,7 @@
       cursor: move;
       user-select: none;
       transition: transform 0.2s ease;
-      touch-action: none; /* Prevents touch events from scrolling */
+      touch-action: none; /* Prevent touch events from scrolling */
     }
     .item.selected {
       border: 2px dashed #007acc;
@@ -157,6 +157,10 @@
         <option value="rectangle">Rectangle</option>
         <option value="circle">Circle / Oval</option>
       </select>
+    </label>
+    <label>
+      Speed (mm/s)
+      <input type="number" id="speed" value="25" min="1">
     </label>
   </div>
 
