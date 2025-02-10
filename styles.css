@@ -1,0 +1,95 @@
+ /* Modern dark theme */
+ body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #ffffff;
+    margin-bottom: 20px;
+  }
+  .controls {
+    max-width: 800px;
+    margin: 0 auto 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .controls label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 14px;
+  }
+  .controls input {
+    padding: 8px;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    width: 80px;
+    text-align: center;
+    color: #e0e0e0;
+    margin-top: 5px;
+  }
+  .button-group {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  button {
+    background-color: #1e1e1e;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 5px;
+    transition: background-color 0.2s ease;
+  }
+  button:hover {
+    background-color: #333;
+  }
+  #result {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: bold;
+  }
+  /* Board container with a subtle grid */
+  #board-container {
+    position: relative;
+    margin: 0 auto;
+    border: 2px dashed #333;
+    background-color: #1e1e1e;
+    background-image: 
+      linear-gradient(0deg, transparent 24%, #333 25%, #333 26%, transparent 27%, transparent 74%, #333 75%, #333 76%, transparent 77%, transparent),
+      linear-gradient(90deg, transparent 24%, #333 25%, #333 26%, transparent 27%, transparent 74%, #333 75%, #333 76%, transparent 77%, transparent);
+    background-size: 20px 20px;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+    border-radius: 8px;
+  }
+  .item {
+    position: absolute;
+    border: 2px solid #555;
+    background-color: #2e2e2e;
+    box-sizing: border-box;
+    cursor: move;
+    user-select: none;
+    transition: transform 0.2s ease;
+  }
+  .item.selected {
+    border: 2px dashed #00aaff;
+    box-shadow: 0 0 8px #00aaff;
+  }
+  /* Selection rectangle styling */
+  #selection-rect {
+    position: absolute;
+    border: 1px dashed #00aaff;
+    background-color: rgba(0,170,255, 0.2);
+    pointer-events: none;
+  }

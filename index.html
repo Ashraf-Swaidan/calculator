@@ -5,18 +5,20 @@
   <!-- Mobile-friendly viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Modern Board Fitting Calculator</title>
+  <!-- Include Interact.js for draggable support -->
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
   <style>
-    /* Modern dark theme */
+    /* Modern white theme */
     body {
-      background-color: #121212;
-      color: #e0e0e0;
+      background-color: #f5f5f5;
+      color: #333;
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       margin: 0;
       padding: 20px;
     }
     h1 {
       text-align: center;
-      color: #ffffff;
+      color: #333;
       margin-bottom: 20px;
     }
     .controls {
@@ -33,14 +35,15 @@
       align-items: center;
       font-size: 14px;
     }
-    .controls input {
+    .controls input,
+    .controls select {
       padding: 8px;
-      background-color: #1e1e1e;
-      border: 1px solid #333;
+      background-color: #fff;
+      border: 1px solid #ccc;
       border-radius: 4px;
       width: 80px;
       text-align: center;
-      color: #e0e0e0;
+      color: #333;
       margin-top: 5px;
     }
     .button-group {
@@ -48,62 +51,63 @@
       margin-bottom: 20px;
     }
     button {
-      background-color: #1e1e1e;
-      border: none;
+      background-color: #fff;
+      border: 1px solid #ccc;
       padding: 10px 20px;
       border-radius: 4px;
-      color: #e0e0e0;
+      color: #333;
       cursor: pointer;
       font-size: 16px;
       margin: 5px;
       transition: background-color 0.2s ease;
     }
     button:hover {
-      background-color: #333;
+      background-color: #eee;
     }
     #result {
       text-align: center;
       margin-bottom: 20px;
       font-size: 18px;
       font-weight: bold;
+      color: #333;
     }
-    /* Board container with a subtle grid */
+    /* Board container with a subtle grid and white background */
     #board-container {
       position: relative;
       margin: 0 auto;
-      border: 2px dashed #333;
-      background-color: #1e1e1e;
+      border: 2px dashed #ccc;
+      background-color: #fff;
       background-image: 
-        linear-gradient(0deg, transparent 24%, #333 25%, #333 26%, transparent 27%, transparent 74%, #333 75%, #333 76%, transparent 77%, transparent),
-        linear-gradient(90deg, transparent 24%, #333 25%, #333 26%, transparent 27%, transparent 74%, #333 75%, #333 76%, transparent 77%, transparent);
+        linear-gradient(0deg, transparent 24%, #ccc 25%, #ccc 26%, transparent 27%, transparent 74%, #ccc 75%, #ccc 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, #ccc 25%, #ccc 26%, transparent 27%, transparent 74%, #ccc 75%, #ccc 76%, transparent 77%, transparent);
       background-size: 20px 20px;
       overflow: hidden;
       transition: transform 0.2s ease;
       border-radius: 8px;
+      touch-action: none; /* Prevents mobile scrolling on board */
     }
     .item {
       position: absolute;
-      border: 2px solid #555;
-      background-color: #2e2e2e;
+      border: 2px solid #aaa;
+      background-color: #f0f0f0;
       box-sizing: border-box;
       cursor: move;
       user-select: none;
       transition: transform 0.2s ease;
+      touch-action: none; /* Prevents touch events from scrolling */
     }
     .item.selected {
-      border: 2px dashed #00aaff;
-      box-shadow: 0 0 8px #00aaff;
+      border: 2px dashed #007acc;
+      box-shadow: 0 0 8px #007acc;
     }
     /* Selection rectangle styling */
     #selection-rect {
       position: absolute;
-      border: 1px dashed #00aaff;
-      background-color: rgba(0,170,255, 0.2);
+      border: 1px dashed #007acc;
+      background-color: rgba(0,122,204, 0.2);
       pointer-events: none;
     }
   </style>
-  <!-- Include Interact.js for draggable support -->
-  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 </head>
 <body>
   <h1>Modern Board Fitting Calculator</h1>
@@ -147,6 +151,13 @@
       Item Gap (cm)
       <input type="number" id="itemGap" value="1" min="0">
     </label>
+    <label>
+      Item Shape:
+      <select id="itemShape">
+        <option value="rectangle">Rectangle</option>
+        <option value="circle">Circle / Oval</option>
+      </select>
+    </label>
   </div>
 
   <!-- Action Buttons -->
@@ -167,260 +178,6 @@
   <!-- Board Container -->
   <div id="board-container"></div>
 
-  <script>
-    // Conversion factor: pixels per cm
-    const scaleFactor = 10;
-    let zoomLevel = 1;
-    const boardContainer = document.getElementById('board-container');
-    const resultDiv = document.getElementById('result');
-
-    // Variables for selection rectangle functionality
-    let isSelecting = false;
-    let selectionStart = { x: 0, y: 0 };
-    let selectionRect = null;
-
-    // Utility function to clear item selection
-    function clearSelection() {
-      document.querySelectorAll('.item.selected').forEach(item => {
-        item.classList.remove('selected');
-      });
-    }
-
-    // Update an item's transform based on its translation and rotation data
-    function updateTransform(item) {
-      const x = parseFloat(item.getAttribute('data-x')) || 0;
-      const y = parseFloat(item.getAttribute('data-y')) || 0;
-      const angle = parseFloat(item.getAttribute('data-rotate')) || 0;
-      item.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
-    }
-
-    // --- Selection Rectangle Handlers using Pointer Events ---
-    boardContainer.addEventListener('pointerdown', function(e) {
-      // Start selection only if clicking on board background (not on an item)
-      if (e.target === boardContainer) {
-        isSelecting = true;
-        boardContainer.setPointerCapture(e.pointerId);
-        const rect = boardContainer.getBoundingClientRect();
-        selectionStart = {
-          x: (e.clientX - rect.left) / zoomLevel,
-          y: (e.clientY - rect.top) / zoomLevel
-        };
-        // Create selection rectangle element
-        selectionRect = document.createElement('div');
-        selectionRect.id = 'selection-rect';
-        selectionRect.style.left = selectionStart.x + 'px';
-        selectionRect.style.top = selectionStart.y + 'px';
-        selectionRect.style.width = '0px';
-        selectionRect.style.height = '0px';
-        boardContainer.appendChild(selectionRect);
-      }
-    });
-
-    boardContainer.addEventListener('pointermove', function(e) {
-      if (!isSelecting || !selectionRect) return;
-      const rect = boardContainer.getBoundingClientRect();
-      const currentX = (e.clientX - rect.left) / zoomLevel;
-      const currentY = (e.clientY - rect.top) / zoomLevel;
-      const x = Math.min(currentX, selectionStart.x);
-      const y = Math.min(currentY, selectionStart.y);
-      const width = Math.abs(currentX - selectionStart.x);
-      const height = Math.abs(currentY - selectionStart.y);
-      selectionRect.style.left = x + 'px';
-      selectionRect.style.top = y + 'px';
-      selectionRect.style.width = width + 'px';
-      selectionRect.style.height = height + 'px';
-    });
-
-    boardContainer.addEventListener('pointerup', function(e) {
-      if (!isSelecting) return;
-      isSelecting = false;
-      boardContainer.releasePointerCapture(e.pointerId);
-      // Get final selection rectangle boundaries (in board coordinates)
-      const selLeft = parseFloat(selectionRect.style.left);
-      const selTop = parseFloat(selectionRect.style.top);
-      const selWidth = parseFloat(selectionRect.style.width);
-      const selHeight = parseFloat(selectionRect.style.height);
-      const selRight = selLeft + selWidth;
-      const selBottom = selTop + selHeight;
-      // Remove the selection rectangle element
-      if (selectionRect && selectionRect.parentNode) {
-        selectionRect.parentNode.removeChild(selectionRect);
-      }
-      selectionRect = null;
-      // For each item, if its bounding box is entirely within the selection, select it
-      document.querySelectorAll('.item').forEach(item => {
-        const itemLeft = parseFloat(item.style.left);
-        const itemTop = parseFloat(item.style.top);
-        const itemWidth = item.offsetWidth;
-        const itemHeight = item.offsetHeight;
-        const itemRight = itemLeft + itemWidth;
-        const itemBottom = itemTop + itemHeight;
-        if (itemLeft >= selLeft && itemRight <= selRight &&
-            itemTop >= selTop && itemBottom <= selBottom) {
-          item.classList.add('selected');
-        }
-      });
-    });
-    // --- End Selection Handlers ---
-
-    // Clear selection when clicking outside the board and controls
-    document.addEventListener('click', function(e) {
-      if (!boardContainer.contains(e.target) &&
-          !e.target.closest('.controls') &&
-          !e.target.closest('.button-group')) {
-        clearSelection();
-      }
-    });
-
-    // --- Generate Items ---
-    document.getElementById('calculateBtn').addEventListener('click', () => {
-      // Clear previous board and result text
-      boardContainer.innerHTML = '';
-      resultDiv.textContent = '';
-
-      // Retrieve board dimensions (cm)
-      const boardWidthCm = parseFloat(document.getElementById('boardWidth').value);
-      const boardHeightCm = parseFloat(document.getElementById('boardHeight').value);
-      // Detailed board padding (cm)
-      const boardPaddingTopCm = parseFloat(document.getElementById('boardPaddingTop').value);
-      const boardPaddingRightCm = parseFloat(document.getElementById('boardPaddingRight').value);
-      const boardPaddingBottomCm = parseFloat(document.getElementById('boardPaddingBottom').value);
-      const boardPaddingLeftCm = parseFloat(document.getElementById('boardPaddingLeft').value);
-      // Item dimensions and gap (cm)
-      const itemWidthCm = parseFloat(document.getElementById('itemWidth').value);
-      const itemHeightCm = parseFloat(document.getElementById('itemHeight').value);
-      const itemGapCm = parseFloat(document.getElementById('itemGap').value);
-
-      // Convert to pixels
-      const boardWidthPx = boardWidthCm * scaleFactor;
-      const boardHeightPx = boardHeightCm * scaleFactor;
-      const paddingTopPx = boardPaddingTopCm * scaleFactor;
-      const paddingRightPx = boardPaddingRightCm * scaleFactor;
-      const paddingBottomPx = boardPaddingBottomCm * scaleFactor;
-      const paddingLeftPx = boardPaddingLeftCm * scaleFactor;
-      const itemWidthPx = itemWidthCm * scaleFactor;
-      const itemHeightPx = itemHeightCm * scaleFactor;
-      const itemGapPx = itemGapCm * scaleFactor;
-
-      // Set board container dimensions and individual paddings
-      boardContainer.style.width = boardWidthPx + 'px';
-      boardContainer.style.height = boardHeightPx + 'px';
-      boardContainer.style.paddingTop = paddingTopPx + 'px';
-      boardContainer.style.paddingRight = paddingRightPx + 'px';
-      boardContainer.style.paddingBottom = paddingBottomPx + 'px';
-      boardContainer.style.paddingLeft = paddingLeftPx + 'px';
-
-      // Compute available drawing area inside the board (excluding paddings)
-      const availableWidth = boardWidthPx - (paddingLeftPx + paddingRightPx);
-      const availableHeight = boardHeightPx - (paddingTopPx + paddingBottomPx);
-
-      let itemsCount = 0;
-      let currentY = 0;
-      while (currentY + itemHeightPx <= availableHeight) {
-        let currentX = 0;
-        while (currentX + itemWidthPx <= availableWidth) {
-          const item = document.createElement('div');
-          item.classList.add('item');
-          item.style.width = itemWidthPx + 'px';
-          item.style.height = itemHeightPx + 'px';
-          // Initialize translation and rotation data attributes
-          item.setAttribute('data-x', 0);
-          item.setAttribute('data-y', 0);
-          item.setAttribute('data-rotate', 0);
-          // Position the item relative to the board (taking left/top padding into account)
-          item.style.left = (currentX + paddingLeftPx) + 'px';
-          item.style.top = (currentY + paddingTopPx) + 'px';
-          updateTransform(item);
-
-          // Toggle selection on tap/click (stop propagation so board click doesn’t interfere)
-          item.addEventListener('click', function(e) {
-            e.stopPropagation();
-            item.classList.toggle('selected');
-          });
-
-          boardContainer.appendChild(item);
-          itemsCount++;
-          currentX += itemWidthPx + itemGapPx;
-        }
-        currentY += itemHeightPx + itemGapPx;
-      }
-      resultDiv.textContent = 'Total items fitted: ' + itemsCount;
-
-      // Initialize draggable behavior using Interact.js (supports group dragging)
-      interact('.item').draggable({
-        modifiers: [
-          interact.modifiers.restrictRect({
-            restriction: boardContainer,
-            endOnly: true
-          })
-        ],
-        listeners: {
-          start: function(event) {
-            // If dragging an unselected item, clear selection and select it
-            if (!event.target.classList.contains('selected')) {
-              clearSelection();
-              event.target.classList.add('selected');
-            }
-          },
-          move: function(event) {
-            const dx = event.dx;
-            const dy = event.dy;
-            const itemsToMove = event.target.classList.contains('selected')
-              ? document.querySelectorAll('.item.selected')
-              : [event.target];
-            itemsToMove.forEach(item => {
-              let x = parseFloat(item.getAttribute('data-x')) || 0;
-              let y = parseFloat(item.getAttribute('data-y')) || 0;
-              x += dx;
-              y += dy;
-              item.setAttribute('data-x', x);
-              item.setAttribute('data-y', y);
-              updateTransform(item);
-            });
-          }
-        }
-      });
-    });
-
-    // --- Control Buttons ---
-    document.getElementById('zoomInBtn').addEventListener('click', () => {
-      zoomLevel += 0.1;
-      boardContainer.style.transform = 'scale(' + zoomLevel + ')';
-    });
-
-    document.getElementById('zoomOutBtn').addEventListener('click', () => {
-      if (zoomLevel > 0.2) {
-        zoomLevel -= 0.1;
-        boardContainer.style.transform = 'scale(' + zoomLevel + ')';
-      }
-    });
-
-    document.getElementById('rotateLeftBtn').addEventListener('click', () => {
-      document.querySelectorAll('.item.selected').forEach(item => {
-        let angle = parseFloat(item.getAttribute('data-rotate')) || 0;
-        angle -= 15;
-        item.setAttribute('data-rotate', angle);
-        updateTransform(item);
-      });
-    });
-
-    document.getElementById('rotateRightBtn').addEventListener('click', () => {
-      document.querySelectorAll('.item.selected').forEach(item => {
-        let angle = parseFloat(item.getAttribute('data-rotate')) || 0;
-        angle += 15;
-        item.setAttribute('data-rotate', angle);
-        updateTransform(item);
-      });
-    });
-
-    document.getElementById('resetItemsBtn').addEventListener('click', () => {
-      document.querySelectorAll('.item').forEach(item => {
-        item.setAttribute('data-x', 0);
-        item.setAttribute('data-y', 0);
-        item.setAttribute('data-rotate', 0);
-        updateTransform(item);
-      });
-    });
-  </script>
+  <script src="logic.js"></script>
 </body>
 </html>
